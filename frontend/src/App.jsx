@@ -1,12 +1,13 @@
 import './App.css'
+import Navbar from './Components/Navbar/Navbar'
+import { BrowserRouter } from 'react-router-dom'
 
 function App() {
 
   return (
-    <>
-      <h1 className='text-3xl font-bold'>HELLO WORLD</h1>
-      <p className='text-red-900 text-2xl'>메뉴 아이콘 추가</p>
-    </>
+    <BrowserRouter>
+      <Navbar />
+    </BrowserRouter>
   )
 }
 
