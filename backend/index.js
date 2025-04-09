@@ -2,10 +2,16 @@ require("dotenv").config()
 const express = require("express")
 const mongoose = require("mongoose")
 const cookieParser = require("cookie-parser");
+const cors = require("cors")
 const app = express();
 const PORT = 3000;
 
 const userRoutes = require("./routes/user")
+
+app.use(cors({
+    origin: "http://localhost:5173", // 프론트엔드 주소
+    credentials: true, // 쿠기 허용 옵션
+}));
 
 // express서버에서 json을 받았지만 json을 해석할 수 없어 해석할 수 있게 하는 코드
 // 라우팅 하기 전에 입력

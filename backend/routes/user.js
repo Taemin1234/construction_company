@@ -201,4 +201,25 @@ router.delete("/delete/:userId", async (req, res) => { //userId 변수로 받음
     }
 });
 
+
+// 토큰 인증 코드
+router.post("/verify-token", (req, res) => {
+    const token = req.cookies.token //쿠키에 저장된 토큰 가져오기
+
+    //토큰이 없을 때
+    if (!token) {
+        return res.status(400).json({ isValid: false, message: "토큰이 존재하지 않습니다." })
+    }
+
+    // 유효한 토큰인지 인증
+    try {
+        // 유효한 토큰인지 결과 값 저장
+        // jwt의 verify 사용 - 토큰, jwt 시크릿 키 가져오기
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        return res.status(200).json({ isValid: true, user: decoded });
+    } catch (error) {
+        return res.status(401).json({ isValid: false, message: "유효하지 않은 토큰입니다." });
+    }
+})
+
 module.exports = router;
