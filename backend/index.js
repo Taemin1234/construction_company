@@ -6,7 +6,9 @@ const cors = require("cors")
 const app = express();
 const PORT = 3000;
 
+//불러오기
 const userRoutes = require("./routes/user")
+const contactRoutes = require("./routes/contact");
 
 app.use(cors({
     origin: "http://localhost:5173", // 프론트엔드 주소
@@ -21,7 +23,9 @@ app.use(express.urlencoded())
 // 쿠키를 읽는 기능을 express에서 사용가능
 app.use(cookieParser());
 
+// 라우터 입력
 app.use("/api/auth", userRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.get('/', (req, res) => {
     res.send("Hello World!")
