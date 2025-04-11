@@ -1,6 +1,45 @@
 import React from 'react';
+import { useState } from 'react';
+import axios from 'axios';
 
 const Contact = () => {
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        message: '',
+        status: 'in progress'
+    })
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        })
+    }
+
+    const handleSubmit = async (e) => { //post 요청이므로 async
+        e.preventDefault()
+
+        try {
+            const response = await axios.post("http://localhost:3000/api/contact", formData);
+
+            if (response.status === 201) {
+                alert('문의가 성공적으로 접수되었습니다.')
+                setFormData({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    message: '',
+                    status: 'in progress'
+                })
+            }
+        } catch (error) {
+            console.log('에러발생', error)
+            alert('에러가 발생했습니다.')
+        }
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-32">
             <div className="container mx-auto px-4 max-w-6xl">
@@ -14,33 +53,42 @@ const Contact = () => {
 
                 <div className="grid lg:grid-cols-2 gap-12 items-start">
                     <div>
-                        <form className="bg-white rounded-2xl shadow-xl p-8">
+                        <form className="bg-white rounded-2xl shadow-xl p-8" onSubmit={handleSubmit}>
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-gray-700 font-medium mb-2">이름</label>
                                     <input
                                         type="text"
+                                        name='name'
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
                                         placeholder="홍길동"
                                         required
+                                        value={formData.name}
+                                        onChange={handleChange}
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-gray-700 font-medium mb-2">이메일</label>
                                     <input
                                         type="email"
+                                        name='email'
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
                                         placeholder="example@email.com"
                                         required
+                                        value={formData.email}
+                                        onChange={handleChange}
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-gray-700 font-medium mb-2">연락처</label>
                                     <input
                                         type="tel"
+                                        name='phone'
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
                                         placeholder="010-1234-5678"
                                         required
+                                        value={formData.phone}
+                                        onChange={handleChange}
                                     />
                                 </div>
                                 <div>
@@ -48,7 +96,10 @@ const Contact = () => {
                                     <textarea
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors h-40"
                                         placeholder="문의하실 내용을 자세히 적어주세요."
+                                        name="message"
                                         required
+                                        value={formData.message}
+                                        onChange={handleChange}
                                     ></textarea>
                                 </div>
                                 <button
