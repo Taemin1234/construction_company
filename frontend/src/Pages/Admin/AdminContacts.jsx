@@ -1,32 +1,69 @@
-import React from "react";
+import axios from "axios";
+import React, { useEffect, useMemo, useState } from "react";
 
 const AdminContacts = () => {
-    const contacts = [
-        {
-            id: 1,
-            name: "홍길동",
-            email: "hong@example.com",
-            phone: "010-1234-5678",
-            message: "상품에 대한 문의입니다.",
-            status: "대기중",
-        },
-        {
-            id: 2,
-            name: "이영희",
-            email: "lee@example.com",
-            phone: "010-8765-4321",
-            message: "환불 요청합니다.",
-            status: "진행중",
-        },
-        {
-            id: 3,
-            name: "박철수",
-            email: "park@example.com",
-            phone: "010-0000-1111",
-            message: "연락이 지연되고 있습니다.",
-            status: "완료",
-        },
-    ];
+    // 전체 문의글 저장
+    const [contacts, setContacts] = useState([]);
+    // 한페이지에 들어갈 페이지 수(최대  10개)
+    const [pageSize, setPageSize] = useState(10);
+    // 현재 페이지 저장
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // 선택한 문의글 저장
+    const [selectedContact, setSelectContact] = useState(null);
+    // 관리자 검색창에 검색어를 저장하고 상태관리
+    const [searchTerm, setSearchTerm] = useState("");
+    // 타입선택(셀렉트박스) 데이터 저장
+    const [searchType, setSearchType] = useState("name");
+    // 문의글 상태 필터
+    const [statusFilter, setStatusFilter] = useState("all");
+
+    // 최초 랜더링 시 서버에 요청하여 데이터 블러오기
+    useEffect(() => {
+        const fetchContacts = async () => {
+            try {
+                const response = await axios.get("http://localhost:3000/api/contact", {
+                    withCredentials: true, // 쿠기 송수신 허용
+                });
+
+                // useState에 저장
+                setContacts(response.data);
+            } catch (error) {
+                console.log("문의글 가져오기 실패: ", error);
+            }
+        };
+
+        // 함수 호출
+        fetchContacts();
+    }, []);
+
+    // 검색 필터 기능
+    const filteredContacts = useMemo(() => {
+        return contacts.filter((contact) => { // contacts의 개별 게시물 가져오기
+            // 속성을 소문자로 변환하여 비교할 준비
+            const value = contact[searchType].toLowerCase() || "";
+            // 속성과 입력된 searchTerm을 비교해서 일치여부 판단
+            const matchesSearch = value.includes(searchTerm.toLowerCase());
+            // statusFilter가 "all"이거나, 문의글의 상태가 statusFilter와 일치할 경우를 판단
+            const matchesStatus =
+                statusFilter === "all" || contact.status === statusFilter;
+            // 두 조건 모두 만족할 경우에만 필터링된 결과에 포함
+            return matchesSearch && matchesStatus;
+        });
+        // 아래 의존성 배열이 변경돨때 재실행
+    }, [contacts, searchTerm, searchType, statusFilter]);
+
+    // 페이지 네이션 구현
+    // 전체 페이지수  =  전체 문의글 길이 / 한페이지당 글 개수
+    const totalPages = Math.ceil(filteredContacts.length / pageSize);
+    // 페이지 네이션 동작
+    const paginatedContacts = useMemo(() => {
+        // 현재 페이지에서 표시할 문의글 목록의 시작 인덱스(1페이지는 0, 2페이지는 11 ...)
+        const start = (currentPage - 1) * pageSize;
+        // 해당 페이지의 전체 인덱스
+        return filteredContacts.slice(start, start + pageSize);
+        // 의존성 배열의 변화에만 재실행
+    }, [filteredContacts, currentPage, pageSize]);
 
     return (
         <div className="p-4 mx-auto max-w-[1400px]">
@@ -34,7 +71,11 @@ const AdminContacts = () => {
 
             <div className="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex w-full md:w-auto gap-2">
-                    <select className="border rounded px-3 py-2 text-base">
+                    <select
+                        className="border rounded px-3 py-2 text-base"
+                        value={searchType}
+                        onChange={(e) => setSearchType(e.target.value)}
+                    >
                         <option value="name">이름</option>
                         <option value="email">이메일</option>
                         <option value="phone">전화번호</option>
@@ -45,9 +86,15 @@ const AdminContacts = () => {
                             type="text"
                             placeholder="검색어를 입력하세요"
                             className="w-full border rounded px-3 py-2 text-base"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <select className="border rounded px-3 py-2 text-base">
+                    <select
+                        className="border rounded px-3 py-2 text-base"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
                         <option value="all">전체 상태</option>
                         <option value="pending">대기중</option>
                         <option value="in progress">진행중</option>
@@ -59,7 +106,16 @@ const AdminContacts = () => {
                     <label className="text-base font-bold text-gray-600">
                         페이지당 표시:{" "}
                     </label>
-                    <select className="border rounded px-3 py-2">
+                    <select
+                        className="border rounded px-3 py-2"
+                        value={pageSize}
+                        onChange={(e) => {
+                            // 한페이지에 표시될 개수 지정
+                            setPageSize(Number(e.target.value));
+                            // 1페이지로 가기기
+                            setCurrentPage(1);
+                        }}
+                    >
                         {[10, 25, 50, 100].map((size) => (
                             <option key={size} value={size}>{`${size}개`}</option>
                         ))}
@@ -68,11 +124,20 @@ const AdminContacts = () => {
             </div>
 
             <div className="mb-4">
-                <div className="text-lg font-bold text-gray-600">총 0개의 문의</div>
+                <div className="text-lg font-bold text-gray-600">총 {filteredContacts.length}개의 문의</div>
             </div>
 
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-sm lg:text-lg font-bold">
+                    <colgroup>
+                        <col className="w-[8%]" />
+                        <col className="w-[12%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[25%]" />
+                        <col className="w-[10%]" />
+                        <col className="w-[10%]" />
+                    </colgroup>
                     <thead className="bg-gray-100">
                         <tr>
                             <th className="px-4 py-3 text-left">번호</th>
@@ -85,23 +150,29 @@ const AdminContacts = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {contacts.map((contact) => (
+                        {paginatedContacts.map((contact, index) => (
                             <tr key={contact.id} className="border-b">
-                                <td className="px-4 py-3">{contact.id}</td>
+                                <td className="px-4 py-3">
+                                    {(currentPage - 1) * pageSize + index + 1}
+                                </td>
                                 <td className="px-4 py-3">{contact.name}</td>
                                 <td className="px-4 py-3">{contact.email}</td>
                                 <td className="px-4 py-3">{contact.phone}</td>
                                 <td className="px-4 py-3">{contact.message}</td>
                                 <td className="px-4 py-3">
                                     <span
-                                        className={`px-2 py-1 rounded-full text-sm ${contact.status === "대기중"
+                                        className={`px-2 py-1 rounded-full text-sm ${contact.status === "pending"
                                             ? "bg-blue-100 text-blue-800"
-                                            : contact.status === "진행중"
+                                            : contact.status === "in progress"
                                                 ? "bg-yellow-100 text-yellow-800"
                                                 : "bg-green-100 text-green-800"
                                             }`}
                                     >
-                                        {contact.status}
+                                        {contact.status === "in progress"
+                                            ? "진행중"
+                                            : contact.status === "pending"
+                                                ? "대기중"
+                                                : "완료"}
                                     </span>
                                 </td>
                                 <td className="px-4 py-3">
@@ -122,29 +193,34 @@ const AdminContacts = () => {
 
             {/* 모바일 버전 */}
             <div className="grid grid-cols-1 gap-4 md:hidden">
-                {contacts.map((contact) => (
+                {paginatedContacts.map((contact, index) => (
                     <div
-                        key={contact.id}
-                        className="p-4 border rounded-lg bg-white shadow-md"
+                        key={contact._id}
+                        className="p-4 border rounded-lg bg-white shadow-md text-lg font-bold"
                     >
-                        <div className="text-lg font-bold">번호: {contact.id}</div>
+                        <div className="flex justify-between items-center mb-2">
+                            <div className="text-lg font-bold">
+                                #{(currentPage - 1) * pageSize + index + 1}
+                                <span
+                                    className={`px-2 py-1 rounded-full text-base ${contact.status === "pending"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : contact.status === "in progress"
+                                            ? "bg-yellow-100 text-yellow-800"
+                                            : "bg-green-100 text-green-800"
+                                        }`}
+                                >
+                                    {contact.status === "in progress"
+                                        ? "진행중"
+                                        : contact.status === "pending"
+                                            ? "대기중"
+                                            : "완료"}
+                                </span>
+                            </div>
+                        </div>
                         <div>이름: {contact.name}</div>
                         <div>이메일: {contact.email}</div>
                         <div>휴대폰: {contact.phone}</div>
                         <div>내용: {contact.message}</div>
-                        <div>
-                            상태:
-                            <span
-                                className={`px-2 py-1 rounded-full text-sm ${contact.status === "대기중"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : contact.status === "진행중"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-green-100 text-green-800"
-                                    }`}
-                            >
-                                {contact.status}
-                            </span>
-                        </div>
                         <div className="mt-4 flex justify-end space-x-2">
                             <button className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600">
                                 수정
@@ -158,9 +234,27 @@ const AdminContacts = () => {
             </div>
 
             <div className="mt-4 flex justify-center space-x-2 text-lg font-bold">
-                <button className="px-3 py-1 rounded border disabled:opacity-50">이전</button>
-                <span className="px-3 py-1">1 / 1</span>
-                <button className="px-3 py-1 rounded border disabled:opacity-50">다음</button>
+                <button
+                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    // 현재 페이지에서 1을 뺌
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    //현재 페이지가 1이면 막기
+                    disabled={currentPage === 1}
+                >
+                    이전
+                </button>
+                <span className="px-3 py-1">
+                    {currentPage} / {totalPages}
+                </span>
+                <button
+                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    // 현재 페이지에서 1을 더함
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    // 전체 페이지 번호랑 같으면 막기
+                    disabled={currentPage === totalPages}
+                >
+                    다음
+                </button>
             </div>
         </div>
     );

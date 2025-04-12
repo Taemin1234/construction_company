@@ -48,7 +48,8 @@ router.post("/", async (req, res) => {
 });
 
 // get 엔드포인트 생성 후 전체 문의를 mongoDB로부터 가져오기
-router.get("/", async (req, res) => {
+// authenticateToken를 넣어 관리자만 가져올 수 있도록 미들웨어 넣기
+router.get("/", authenticateToken, async (req, res) => {
     try {
         const contacts = await Contact.find().sort({ createdAt: -1 }); // -1은 최신순, 1은 오래된순
         res.json(contacts);
