@@ -83,7 +83,7 @@ const AdminPosts = () => {
             </div>
 
             <div className="mb-4 flex justify-between items-center">
-                <div className="text-lg font-bold text-gray-600">총 0개의 게시물</div>
+                <div className="text-lg font-bold text-gray-600">총 {paginatedPosts.length}개의 게시물</div>
                 <div className="flex items-center space-x-2">
                     <label className="text-base font-bold text-gray-600">
                         페이지당 표시:{" "}
@@ -109,14 +109,14 @@ const AdminPosts = () => {
                 <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-sm lg:text-lg font-bold">
                     <thead className="bg-gray-100">
                         <tr>
-                            <th className="px-4 py-3 text-left">번호</th>
-                            <th className="px-4 py-3 text-left">제목</th>
-                            <th className="px-4 py-3 text-left">내용</th>
-                            <th className="px-4 py-3 text-left">조회수</th>
-                            <th className="px-4 py-3 text-center">파일</th>
-                            <th className="px-4 py-3 text-left">작성일</th>
-                            <th className="px-4 py-3 text-left">수정일</th>
-                            <th className="px-4 py-3 text-center">관리</th>
+                            <th className="px-4 py-3 text-left w-[8%]">번호</th>
+                            <th className="px-4 py-3 text-left w-[15%]">제목</th>
+                            <th className="px-4 py-3 text-left w-[30%]">내용</th>
+                            <th className="px-4 py-3 text-left w-[7%]">조회수</th>
+                            <th className="px-4 py-3 text-left w-[10%]">파일</th>
+                            <th className="px-4 py-3 text-left w-[12%]">작성일</th>
+                            <th className="px-4 py-3 text-left w-[12%]">수정일</th>
+                            <th className="px-4 py-3 text-left w-[6%]">관리</th>
                         </tr>
                     </thead>
                     <tbody>
