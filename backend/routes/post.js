@@ -1,8 +1,19 @@
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const express = require("express");
 const router = express.Router();
 const Post = require("../models/Post");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
+const { marked } = require('marked');
+
+// upload.js와 동일
+const s3Client = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    }
+});
 
 // 관리자만 접근할 수 있는 미들웨어
 const authenticateToken = (req, res, next) => {
@@ -22,7 +33,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // 게시물 작성 post
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
     try {
         const { title, content, fileUrl } = req.body;
 
@@ -104,7 +115,23 @@ router.get("/:id", async (req, res) => {
             await post.save();
         }
 
-        res.json(post);
+        // 마크다운 형식을 html로 변환
+        let htmlContent;
+        try {
+            htmlContent = marked.parse(post.content || '');
+        } catch (error) {
+            console.error('마크다운 변환 실패:', error);
+            htmlContent = post.content;
+        }
+
+        // 변환된 html 콘텐츠를 추가
+        const responseData = {
+            ...post.toObject(),
+            renderedContent: htmlContent,
+        };
+
+        // 변환이 된 포스트 전달
+        res.json(responseData);
     } catch (error) {
         res.status(500).json({ message: "서버 오류가 발생했습니다." });
     }
@@ -121,6 +148,51 @@ router.put("/:id", async (req, res) => {
         // 없을 경우
         if (!post) {
             return res.status(404).json({ message: "게시글을 찾을 수 없습니다." })
+        }
+
+        // 이미지나 첨부파일이 추가/삭제되었을 때
+        // 이미지 URL 추출 정규포현식
+        const imgRegex = /https:\/\/[^"']*?\.(?:png|jpg|jpeg|gif|PNG|JPG|JPEG|GIF)/g;
+        // 기존과 새 콘텐츠에서 이미지 추출
+        const oldContentImages = post.content.match(imgRegex) || []; // 기존 이미지 url 추출
+        const newContentImages = content.match(imgRegex) || []; //새롭게 포함된 이미지 url 추출
+
+        //삭제할 이미지 및 첨부파일 식별
+        //기존 이미지 목록(oldContentImages) 중 새 콘텐츠에 없는 URL들을 필터링하여 삭제 대상으로 식별
+        const deletedImages = oldContentImages.filter(url => !newContentImages.includes(url));
+        // 기존 첨부파일 목록(post.fileUrl)과 새 첨부파일 목록(fileUrl)을 비교하여, 더 이상 사용되지 않는 파일 URL들을 식별
+        const deletedFiles = (post.fileUrl || []).filter(url => !(fileUrl || []).includes(url));
+
+
+        // 실제 업로드 진행 - S3 객체 키 추출 함수
+        const getS3KeyFromUrl = (url) => {
+            try {
+                //new URL(url)을 사용하여 URL을 파싱
+                const urlObj = new URL(url);
+                //urlObj.pathname에서 앞의 /를 제거하기 위해 substring(1)을 사용하고, URL 디코딩을 수행
+                return decodeURIComponent(urlObj.pathname.substring(1));
+            } catch (error) {
+                console.error('URL 파싱 에러:', error);
+                return null;
+            }
+        };
+
+        //삭제할 파일 목록 통합 - 앞에서 식별한 삭제할 이미지와 첨부파일 URL을 하나의 배열로 합침
+        const allDeletedFiles = [...deletedImages, ...deletedFiles];
+        // 반복문을 통한 S3 삭제 작업
+        for (const fileUrl of allDeletedFiles) {
+            const key = getS3KeyFromUrl(fileUrl);
+            if (key) {
+                try {
+                    await s3Client.send(new DeleteObjectCommand({
+                        Bucket: process.env.AWS_BUCKET_NAME,
+                        Key: key
+                    }));
+                    console.log('파일 삭제 완료:', key);
+                } catch (error) {
+                    console.error('S3 파일 삭제 에러:', error);
+                }
+            }
         }
 
         // 원래 저장되어있던 포스트의 타이틀, 컨텐츠, 파일 수정
@@ -147,6 +219,38 @@ router.delete("/:id", async (req, res) => {
         // 없을 경우
         if (!post) {
             return res.status(404).json({ message: "게시글을 찾을 수 없습니다." })
+        }
+
+        // 이미지 삭제 코드(내용과 이미지를 구분하여 이미지만 삭제)
+        // 일반 내용과 이미지 구분하는 정규식
+        const imgRegex = /https:\/\/[^"']*?\.(?:png|jpg|jpeg|gif|PNG|JPG|JPEG|GIF)/g;
+        const contentImages = post.content.match(imgRegex) || [];
+
+        const getS3KeyFromUrl = (url) => {
+            try {
+                const urlObj = new URL(url);
+                return decodeURIComponent(urlObj.pathname.substring(1));
+            } catch (error) {
+                console.error('URL 파싱 에러:', error);
+                return null;
+            }
+        };
+
+        const allFiles = [...contentImages, ...(post.fileUrl || [])];
+
+        for (const fileUrl of allFiles) {
+            const key = getS3KeyFromUrl(fileUrl);
+            if (key) {
+                console.log('삭제할 파일 키:', key);
+                try {
+                    await s3Client.send(new DeleteObjectCommand({
+                        Bucket: process.env.AWS_BUCKET_NAME,
+                        Key: key
+                    }));
+                } catch (error) {
+                    console.error('S3 파일 삭제 에러:', error);
+                }
+            }
         }
 
         await post.deleteOne();

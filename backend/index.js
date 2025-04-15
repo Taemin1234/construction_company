@@ -9,6 +9,8 @@ const PORT = 3000;
 //불러오기
 const userRoutes = require("./routes/user")
 const contactRoutes = require("./routes/contact");
+const postRoutes = require("./routes/post");
+const uploadRoutes = require("./routes/upload");
 
 app.use(cors({
     origin: "http://localhost:5173", // 프론트엔드 주소
@@ -26,6 +28,8 @@ app.use(cookieParser());
 // 라우터 입력
 app.use("/api/auth", userRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/post", postRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.get('/', (req, res) => {
     res.send("Hello World!")
