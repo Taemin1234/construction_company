@@ -14,7 +14,7 @@ const AdminPosts = () => {
     useEffect(() => {
         const fetchPosts = async () => {
             try {
-                const response = await axios.get("http://localhost:3000/api/contact");
+                const response = await axios.get("http://localhost:3000/api/post");
 
                 // useState에 저장
                 setPosts(response.data);
